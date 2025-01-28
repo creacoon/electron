@@ -175,16 +175,37 @@ class NativePHP {
         app.setAsDefaultProtocolClient(deepLinkProtocol);
       }
 
-
       if (process.platform === 'win32') {
-          const gotTheLock = app.requestSingleInstanceLock();
-          if (!gotTheLock) {
-              app.quit();
-              return;
-          }
-      }
+            const gotTheLock = app.requestSingleInstanceLock();
+
+            if (!gotTheLock) {
+                app.quit();
+            } else {
+                app.on("second-instance", (event, commandLine) => {
+                    if (this.mainWindow) {
+                        if (this.mainWindow.isMinimized()) {
+                            this.mainWindow.restore();
+                        }
+                        this.mainWindow.focus();
+                    }
+                    this.handleDeepLink(commandLine.pop());
+                });
+            }
+        }
+    } else {
+        console.log("No deep link protocol found in config");
     }
   }
+
+  handleDeepLink(url) {
+      if (url) {
+          notifyLaravel("events", {
+              event: "\\Native\\Laravel\\Events\\App\\OpenedFromURL",
+              payload: [url],
+          });
+      }
+  }
+
 
   private startAutoUpdater(config) {
     if (config?.updater?.enabled === true) {
